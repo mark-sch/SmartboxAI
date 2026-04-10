@@ -296,21 +296,24 @@ async def get_session(
 
 
 @router.post("/", summary="Create a new session")
-async def create_session(request: CreateSessionRequest | None = None) -> Session:
+async def create_session(
+    body: CreateSessionRequest | None = None,
+    fastapi_request: Request | None = None,
+) -> Session:
     """Create a new session."""
     # Use provided work_dir or default to user's home directory
-    if request and request.work_dir:
-        work_dir_path = Path(request.work_dir).expanduser().resolve()
+    if body and body.work_dir:
+        work_dir_path = Path(body.work_dir).expanduser().resolve()
         # Validate the directory exists
         if not work_dir_path.exists():
-            if request.create_dir:
+            if body.create_dir:
                 # Auto-create the directory
                 try:
                     work_dir_path.mkdir(parents=True, exist_ok=True)
                 except PermissionError as e:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Permission denied: cannot create directory {request.work_dir}",
+                        detail=f"Permission denied: cannot create directory {body.work_dir}",
                     ) from e
                 except OSError as e:
                     raise HTTPException(
@@ -321,12 +324,12 @@ async def create_session(request: CreateSessionRequest | None = None) -> Session
                 # Return 404 to indicate directory does not exist
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Directory does not exist: {request.work_dir}",
+                    detail=f"Directory does not exist: {body.work_dir}",
                 )
         if not work_dir_path.is_dir():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Path is not a directory: {request.work_dir}",
+                detail=f"Path is not a directory: {body.work_dir}",
             )
         work_dir = KaosPath.unsafe_from_local_path(work_dir_path)
     else:
@@ -336,8 +339,8 @@ async def create_session(request: CreateSessionRequest | None = None) -> Session
 
     # Store agent file in session state if specified
     default_agent: str | None = None
-    if request is not None:
-        default_agent = getattr(request.app.state, "default_agent", None)
+    if fastapi_request is not None:
+        default_agent = getattr(fastapi_request.app.state, "default_agent", None)
     if default_agent:
         from kimi_cli.agentspec import DEFAULT_AGENT_FILE, EXPLORE_AGENT_FILE, OKABE_AGENT_FILE
         from kimi_cli.session_state import load_session_state, save_session_state
