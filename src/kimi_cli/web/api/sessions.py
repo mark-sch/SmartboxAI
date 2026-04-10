@@ -101,6 +101,11 @@ def get_runner(req: Request) -> KimiCLIRunner:
     return req.app.state.runner
 
 
+def get_default_agent(req: Request) -> str | None:
+    """Get the default agent from the FastAPI app state."""
+    return getattr(req.app.state, "default_agent", None)
+
+
 def get_runner_ws(ws: WebSocket) -> KimiCLIRunner:
     """Get the KimiCLIRunner from the FastAPI app state (for WebSocket routes)."""
     return ws.app.state.runner
@@ -298,7 +303,7 @@ async def get_session(
 @router.post("/", summary="Create a new session")
 async def create_session(
     body: CreateSessionRequest | None = None,
-    fastapi_request: Request | None = None,
+    default_agent: str | None = Depends(get_default_agent),
 ) -> Session:
     """Create a new session."""
     # Use provided work_dir or default to user's home directory
@@ -338,9 +343,6 @@ async def create_session(
     context_file = kimi_cli_session.dir / "context.jsonl"
 
     # Store agent file in session state if specified
-    default_agent: str | None = None
-    if fastapi_request is not None:
-        default_agent = getattr(fastapi_request.app.state, "default_agent", None)
     if default_agent:
         from kimi_cli.agentspec import DEFAULT_AGENT_FILE, EXPLORE_AGENT_FILE, OKABE_AGENT_FILE
         from kimi_cli.session_state import load_session_state, save_session_state
