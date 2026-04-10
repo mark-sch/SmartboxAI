@@ -1145,15 +1145,19 @@ def _current_toast(position: Literal["left", "right"] = "left") -> _ToastEntry |
     return queue[0]
 
 
-def _build_toolbar_tips(clipboard_available: bool) -> list[str]:
-    tips = [
-        "ctrl-x: toggle mode",
-        "shift-tab: plan mode",
-        "ctrl-o: editor",
-        "ctrl-j: newline",
-        "/feedback: send feedback",
-        "/theme: switch dark/light",
-    ]
+def _build_toolbar_tips(clipboard_available: bool, shell_enabled: bool = True) -> list[str]:
+    tips: list[str] = []
+    if shell_enabled:
+        tips.append("ctrl-x: toggle mode")
+    tips.extend(
+        [
+            "shift-tab: plan mode",
+            "ctrl-o: editor",
+            "ctrl-j: newline",
+            "/feedback: send feedback",
+            "/theme: switch dark/light",
+        ]
+    )
     if clipboard_available:
         tips.append("ctrl-v: paste clipboard")
     tips.append("@: mention files")
@@ -1164,6 +1168,8 @@ _TIP_SEPARATOR = " | "
 
 
 class CustomPromptSession:
+    _shell_enabled_provider: Callable[[], bool]
+
     def __init__(
         self,
         *,
@@ -1178,6 +1184,7 @@ class CustomPromptSession:
         shell_mode_slash_commands: Sequence[SlashCommand[Any]],
         editor_command_provider: Callable[[], str] = lambda: "",
         plan_mode_toggle_callback: Callable[[], Awaitable[bool]] | None = None,
+        shell_enabled_provider: Callable[[], bool] = lambda: True,
     ) -> None:
         history_dir = get_share_dir() / "user-history"
         history_dir.mkdir(parents=True, exist_ok=True)
@@ -1208,8 +1215,9 @@ class CustomPromptSession:
         self._prompt_buffer_container: ConditionalContainer | None = None
         self._last_ui_state: PromptUIState = PromptUIState.NORMAL_INPUT
         self._suspended_buffer_document: Document | None = None
+        self._shell_enabled_provider = shell_enabled_provider
         clipboard_available = is_clipboard_available()
-        self._tips = _build_toolbar_tips(clipboard_available)
+        self._tips = _build_toolbar_tips(clipboard_available, shell_enabled_provider())
         self._tip_rotation_index: int = random.randrange(len(self._tips)) if self._tips else 0
 
         history_entries = _load_history_entries(self._history_file)
@@ -1272,6 +1280,11 @@ class CustomPromptSession:
         @_kb.add("c-x", eager=True)
         def _(event: KeyPressEvent) -> None:
             if self._active_prompt_delegate() is not None:
+                return
+            # Only toggle to shell mode if shell is enabled
+            if self._mode == PromptMode.AGENT and not self._shell_enabled_provider():
+                toast("Shell mode is not available in this agent", duration=3.0)
+                event.app.invalidate()
                 return
             self._mode = self._mode.toggle()
             # Apply mode-specific settings

@@ -27,6 +27,7 @@ from kimi_cli.background import list_task_views
 from kimi_cli.notifications import NotificationManager, NotificationWatcher
 from kimi_cli.soul import LLMNotSet, LLMNotSupported, MaxStepsReached, RunCancelled, Soul, run_soul
 from kimi_cli.soul.kimisoul import KimiSoul
+from kimi_cli.soul.toolset import KimiToolset
 from kimi_cli.ui.shell import update as _update_mod
 from kimi_cli.ui.shell.console import console
 from kimi_cli.ui.shell.echo import render_user_echo_text
@@ -433,6 +434,14 @@ class Shell:
                 self.soul.runtime.config.default_editor if isinstance(self.soul, KimiSoul) else ""
             ),
             plan_mode_toggle_callback=_plan_mode_toggle,
+            shell_enabled_provider=lambda: (
+                (
+                    isinstance(self.soul.agent.toolset, KimiToolset)
+                    and self.soul.agent.toolset.find("Shell") is not None
+                )
+                if isinstance(self.soul, KimiSoul)
+                else True
+            ),
         ) as prompt_session:
             self._prompt_session = prompt_session
             if self._prefill_text:
@@ -1399,7 +1408,7 @@ class WelcomeInfoItem:
 
 
 def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
-    head = Text.from_markup("Welcome to Kimi Code CLI!")
+    head = Text.from_markup("Welcome to SmartboxAI Terminal!")
     help_text = Text.from_markup("[grey50]Send /help for help information.[/grey50]")
 
     # Use Table for precise width control
