@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 from inline_snapshot import snapshot
 
-from kimi_cli.agentspec import DEFAULT_AGENT_FILE, load_agent_spec
+from kimi_cli.agentspec import DEFAULT_AGENT_FILE, EXPLORE_AGENT_FILE, load_agent_spec
 from kimi_cli.exception import AgentSpecError
 
 
@@ -271,6 +271,40 @@ Before designing your implementation plan, consider whether you fully understand
         for name, spec in subagent_specs["plan"].subagents.items()
     }
     assert sub_subagents == snapshot({})
+
+
+def test_load_explore_main_agent_spec():
+    """Test loading the explore main agent specification."""
+    spec = load_agent_spec(EXPLORE_AGENT_FILE)
+
+    assert spec.name == snapshot("explore")
+    assert spec.system_prompt_path == EXPLORE_AGENT_FILE.parent / "system.md"
+    assert spec.allowed_tools == snapshot(
+        [
+            "kimi_cli.tools.shell:Shell",
+            "kimi_cli.tools.file:ReadFile",
+            "kimi_cli.tools.file:ReadMediaFile",
+            "kimi_cli.tools.file:Glob",
+            "kimi_cli.tools.file:Grep",
+            "kimi_cli.tools.web:SearchWeb",
+            "kimi_cli.tools.web:FetchURL",
+            "kimi_cli.tools.ask_user:AskUserQuestion",
+        ]
+    )
+    assert spec.exclude_tools == snapshot(
+        [
+            "kimi_cli.tools.agent:Agent",
+            "kimi_cli.tools.todo:SetTodoList",
+            "kimi_cli.tools.plan:ExitPlanMode",
+            "kimi_cli.tools.plan.enter:EnterPlanMode",
+            "kimi_cli.tools.file:WriteFile",
+            "kimi_cli.tools.file:StrReplaceFile",
+            "kimi_cli.tools.background:TaskList",
+            "kimi_cli.tools.background:TaskOutput",
+            "kimi_cli.tools.background:TaskStop",
+        ]
+    )
+    assert spec.subagents == snapshot({})
 
 
 def test_load_agent_spec_basic(agent_file: Path):

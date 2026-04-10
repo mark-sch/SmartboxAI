@@ -337,3 +337,42 @@ class Context:
         history.append(message)
         messages_after_last_usage.append(message)
         return True
+
+    async def replace_system_prompt(self, prompt: str) -> None:
+        """Replace the system prompt in the context file, removing any existing one.
+
+        This is used when switching agents (e.g., --agent override) to ensure
+        only the new agent's system prompt is present.
+        """
+        prompt_line = json.dumps({"role": "_system_prompt", "content": prompt}) + "\n"
+
+        def _replace_system_prompt_sync() -> None:
+            if not self._file_backend.exists() or self._file_backend.stat().st_size == 0:
+                # No existing content, just write
+                self._file_backend.write_text(prompt_line, encoding="utf-8")
+                return
+
+            # Read existing content, filter out old system prompts, write new one + rest
+            tmp_path = self._file_backend.with_suffix(".tmp")
+            with (
+                tmp_path.open("w", encoding="utf-8") as tmp_f,
+                self._file_backend.open(encoding="utf-8") as src_f,
+            ):
+                tmp_f.write(prompt_line)  # Write new system prompt first
+                while True:
+                    line = src_f.readline()
+                    if not line:
+                        break
+                    try:
+                        record = json.loads(line)
+                        # Skip old system prompt lines
+                        if record.get("role") == "_system_prompt":
+                            continue
+                        tmp_f.write(line)
+                    except json.JSONDecodeError:
+                        # Keep lines that aren't valid JSON
+                        tmp_f.write(line)
+            tmp_path.replace(self._file_backend)
+
+        await asyncio.to_thread(_replace_system_prompt_sync)
+        self._system_prompt = prompt

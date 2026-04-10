@@ -4,7 +4,7 @@ An agent defines the AI's behavior, including system prompts, available tools, a
 
 ## Built-in agents
 
-Kimi Code CLI provides two built-in agents. You can select one at startup with the `--agent` flag:
+Kimi Code CLI provides three built-in agents. You can select one at startup with the `--agent` flag:
 
 ```sh
 kimi --agent okabe
@@ -19,6 +19,27 @@ The default agent, suitable for general use. Enabled tools:
 ### `okabe`
 
 An experimental agent for testing new prompts and tools. Adds `SendDMail` on top of `default`.
+
+### `explore`
+
+A read-only agent specialized for codebase exploration and research. This agent cannot modify files or execute commands that change the system. Ideal for:
+
+- Exploring unfamiliar codebases
+- Searching for specific patterns or functions
+- Analyzing project structure
+- Research without risk of accidental modifications
+
+Enabled tools:
+
+`Shell` (read-only), `ReadFile`, `ReadMediaFile`, `Glob`, `Grep`, `SearchWeb`, `FetchURL`, `AskUserQuestion`
+
+**Usage:**
+
+```sh
+kimi --agent explore
+```
+
+**Note:** Unlike the `explore` subagent type used with the `Agent` tool, this main agent can interact with the user via `AskUserQuestion` but cannot spawn subagents.
 
 ## Custom agent files
 

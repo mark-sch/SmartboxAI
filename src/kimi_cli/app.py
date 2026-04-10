@@ -101,6 +101,8 @@ class KimiCLI:
         resumed: bool = False,
         # Extensions
         agent_file: Path | None = None,
+        agent_override: bool = False,
+        use_session_agent: bool = False,
         mcp_configs: list[MCPConfig] | list[dict[str, Any]] | None = None,
         skills_dirs: list[KaosPath] | None = None,
         # Loop control
@@ -121,6 +123,8 @@ class KimiCLI:
             thinking (bool | None, optional): Whether to enable thinking mode. Defaults to None.
             yolo (bool, optional): Approve all actions without confirmation. Defaults to False.
             agent_file (Path | None, optional): Path to the agent file. Defaults to None.
+            agent_override (bool, optional): Whether agent_file was explicitly specified by user.
+                When True, overrides stored system prompt in existing sessions. Defaults to False.
             mcp_configs (list[MCPConfig | dict[str, Any]] | None, optional): MCP configs to load
                 MCP tools from. Defaults to None.
             skills_dirs (list[KaosPath] | None, optional): Custom skills directories that
@@ -235,7 +239,22 @@ class KimiCLI:
             logger.debug("Failed to refresh plugin configs, skipping")
 
         if agent_file is None:
-            agent_file = DEFAULT_AGENT_FILE
+            # Check if there's a stored agent in session state (only with --use-session-agent)
+            if use_session_agent and not agent_override:
+                logger.warning(
+                    "--use-session-agent is deprecated. "
+                    "Agent selection is now call-based. "
+                    "Use --agent to explicitly select an agent."
+                )
+                from kimi_cli.session_state import load_session_state
+
+                state = load_session_state(session.dir)
+                if state.agent_file:
+                    agent_file = Path(state.agent_file)
+                    logger.info("Using session-stored agent: {path}", path=agent_file)
+            if agent_file is None:
+                agent_file = DEFAULT_AGENT_FILE
+                logger.info("Using default agent: {path}", path=agent_file)
         if startup_progress is not None:
             startup_progress("Loading agent...")
 
@@ -251,9 +270,21 @@ class KimiCLI:
         context = Context(session.context_file)
         await context.restore()
 
-        if context.system_prompt is not None:
+        if agent_override:
+            # User explicitly specified --agent, override stored system prompt
+            await context.replace_system_prompt(agent.system_prompt)
+            # Save agent_file to session state for future resumes
+            from kimi_cli.session_state import load_session_state, save_session_state
+
+            state = load_session_state(session.dir)
+            state.agent_file = str(agent_file)
+            save_session_state(state, session.dir)
+            logger.info("[DEBUG] Saved agent_file to state: {path}", path=agent_file)
+        elif context.system_prompt is not None:
+            # Use stored system prompt from context
             agent = dataclasses.replace(agent, system_prompt=context.system_prompt)
         else:
+            # No stored system prompt, write current one
             await context.write_system_prompt(agent.system_prompt)
 
         soul = KimiSoul(agent, context=context)

@@ -41,6 +41,8 @@ class SessionState(BaseModel):
     auto_archive_exempt: bool = False
     # Todo list state
     todos: list[TodoItemState] = Field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
+    # Agent configuration
+    agent_file: str | None = None  # Path to agent spec file used for this session
 
 
 _LEGACY_METADATA_FILENAME = "metadata.json"

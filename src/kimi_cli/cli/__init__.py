@@ -270,7 +270,7 @@ def kimi(
     ] = False,
     # Customization
     agent: Annotated[
-        Literal["default", "okabe"] | None,
+        Literal["default", "okabe", "explore"] | None,
         typer.Option(
             "--agent",
             help="Builtin agent specification to use. Default: builtin default agent.",
@@ -287,6 +287,16 @@ def kimi(
             help="Custom agent specification file. Default: builtin default agent.",
         ),
     ] = None,
+    use_session_agent: Annotated[
+        bool,
+        typer.Option(
+            "--use-session-agent",
+            help=(
+                "Use the agent stored in the session (deprecated, for backward compatibility). "
+                "Default: no."
+            ),
+        ),
+    ] = False,
     mcp_config_file: Annotated[
         list[Path] | None,
         typer.Option(
@@ -367,7 +377,7 @@ def kimi(
 
     from kaos.path import KaosPath
 
-    from kimi_cli.agentspec import DEFAULT_AGENT_FILE, OKABE_AGENT_FILE
+    from kimi_cli.agentspec import DEFAULT_AGENT_FILE, EXPLORE_AGENT_FILE, OKABE_AGENT_FILE
     from kimi_cli.app import KimiCLI, enable_logging
     from kimi_cli.config import Config, load_config_from_string
     from kimi_cli.exception import ConfigError
@@ -447,12 +457,15 @@ def kimi(
                 param_hint=active_options[0],
             )
 
+    agent_override = agent is not None
     if agent is not None:
         match agent:
             case "default":
                 agent_file = DEFAULT_AGENT_FILE
             case "okabe":
                 agent_file = OKABE_AGENT_FILE
+            case "explore":
+                agent_file = EXPLORE_AGENT_FILE
 
     ui: UIMode = "shell"
     if print_mode:
@@ -613,6 +626,8 @@ def kimi(
                 plan_mode=plan,
                 resumed=resumed,
                 agent_file=agent_file,
+                agent_override=agent_override,
+                use_session_agent=use_session_agent,
                 mcp_configs=mcp_configs,
                 skills_dirs=skills_dirs,
                 max_steps_per_turn=max_steps_per_turn,
