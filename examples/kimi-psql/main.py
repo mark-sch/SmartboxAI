@@ -363,7 +363,7 @@ class PsqlShell:
         console.print(
             Panel(
                 Text.from_markup(
-                    "[bold]Welcome to kimi-psql![/bold]\n"
+                    "[bold]Welcome to smartbox-psql![/bold]\n"
                     "[grey50]AI-assisted PostgreSQL interactive terminal[/grey50]\n\n"
                     "[cyan]Ctrl-X[/cyan]: Switch between AI and PSQL mode\n"
                     "[cyan]Ctrl-D[/cyan]: Exit"
