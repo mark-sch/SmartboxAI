@@ -1,6 +1,6 @@
 """Web UI command for Kimi Code CLI."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 import typer
 
@@ -55,6 +55,13 @@ def web(
             help="Only allow access from local network (default) or allow public access.",
         ),
     ] = True,
+    agent: Annotated[
+        Literal["default", "okabe", "explore"] | None,
+        typer.Option(
+            "--agent",
+            help="Agent to use for all sessions. Overrides stored agent for existing sessions.",
+        ),
+    ] = None,
 ):
     """Run Kimi Code CLI web interface."""
     from kimi_cli.web.app import run_web_server
@@ -77,4 +84,5 @@ def web(
         dangerously_omit_auth=dangerously_omit_auth,
         restrict_sensitive_apis=restrict_sensitive_apis,
         lan_only=lan_only,
+        default_agent=agent,
     )

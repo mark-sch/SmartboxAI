@@ -333,6 +333,28 @@ async def create_session(request: CreateSessionRequest | None = None) -> Session
         work_dir = KaosPath.unsafe_from_local_path(Path.home())
     kimi_cli_session = await KimiCLISession.create(work_dir=work_dir)
     context_file = kimi_cli_session.dir / "context.jsonl"
+
+    # Store agent file in session state if specified
+    default_agent: str | None = None
+    if request is not None:
+        default_agent = getattr(request.app.state, "default_agent", None)
+    if default_agent:
+        from kimi_cli.agentspec import DEFAULT_AGENT_FILE, EXPLORE_AGENT_FILE, OKABE_AGENT_FILE
+        from kimi_cli.session_state import load_session_state, save_session_state
+
+        session_dir = kimi_cli_session.dir
+        state = load_session_state(session_dir)
+        match default_agent:
+            case "default":
+                state.agent_file = str(DEFAULT_AGENT_FILE)
+            case "okabe":
+                state.agent_file = str(OKABE_AGENT_FILE)
+            case "explore":
+                state.agent_file = str(EXPLORE_AGENT_FILE)
+            case _:
+                pass
+        save_session_state(state, session_dir)
+
     invalidate_sessions_cache()
     invalidate_work_dirs_cache()
     return Session(

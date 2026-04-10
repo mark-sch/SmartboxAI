@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -20,6 +22,24 @@ from kimi_cli.app import KimiCLI, enable_logging
 from kimi_cli.cli.mcp import get_global_mcp_config_file
 from kimi_cli.exception import MCPConfigError
 from kimi_cli.web.store.sessions import load_session_by_id
+
+ENV_AGENT_OVERRIDE = "KIMI_WEB_AGENT_OVERRIDE"
+
+
+def _resolve_agent_file(agent_name: str) -> Path | None:
+    """Resolve agent name to agent file path."""
+    from kimi_cli.agentspec import DEFAULT_AGENT_FILE, EXPLORE_AGENT_FILE, OKABE_AGENT_FILE
+
+    match agent_name:
+        case "default":
+            return DEFAULT_AGENT_FILE
+        case "okabe":
+            return OKABE_AGENT_FILE
+        case "explore":
+            return EXPLORE_AGENT_FILE
+        case _:
+            pass
+    return None
 
 
 async def run_worker(session_id: UUID) -> None:
@@ -49,16 +69,44 @@ async def run_worker(session_id: UUID) -> None:
     # vs a brand-new session that should honor config.default_plan_mode.
     resumed = (session.dir / "state.json").exists()
 
+    # Determine agent file: 1. Env override, 2. Stored in session state, 3. Default
+    agent_file: Path | None = None
+    agent_override = os.environ.get(ENV_AGENT_OVERRIDE)
+    if agent_override:
+        agent_file = _resolve_agent_file(agent_override)
+        logger.info("Using agent override from environment: {agent}", agent=agent_override)
+    else:
+        # Check for stored agent in session state
+        from kimi_cli.session_state import load_session_state
+
+        state = load_session_state(session.dir)
+        if state.agent_file:
+            agent_file = Path(state.agent_file)
+            logger.info("Using stored agent from session state: {path}", path=agent_file)
+
     # Create KimiCLI instance with MCP configuration
+    # agent_override is True when env override is set, forcing the new agent's system prompt
     try:
-        kimi_cli = await KimiCLI.create(session, mcp_configs=mcp_configs or None, resumed=resumed)
+        kimi_cli = await KimiCLI.create(
+            session,
+            mcp_configs=mcp_configs or None,
+            resumed=resumed,
+            agent_file=agent_file,
+            agent_override=bool(agent_override),
+        )
     except MCPConfigError as exc:
         logger.warning(
             "Invalid MCP config in {path}: {error}. Starting without MCP.",
             path=default_mcp_file,
             error=exc,
         )
-        kimi_cli = await KimiCLI.create(session, mcp_configs=None, resumed=resumed)
+        kimi_cli = await KimiCLI.create(
+            session,
+            mcp_configs=None,
+            resumed=resumed,
+            agent_file=agent_file,
+            agent_override=bool(agent_override),
+        )
 
     # Run in wire stdio mode
     await kimi_cli.run_wire_stdio()
