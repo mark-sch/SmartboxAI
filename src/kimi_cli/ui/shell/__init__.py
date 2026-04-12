@@ -443,6 +443,7 @@ class Shell:
                 if isinstance(self.soul, KimiSoul)
                 else True
             ),
+            agent_name=self.soul.name if isinstance(self.soul, KimiSoul) else None,
         ) as prompt_session:
             self._prompt_session = prompt_session
             if self._prefill_text:

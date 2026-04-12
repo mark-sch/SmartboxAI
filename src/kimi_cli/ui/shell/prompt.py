@@ -1185,6 +1185,7 @@ class CustomPromptSession:
         editor_command_provider: Callable[[], str] = lambda: "",
         plan_mode_toggle_callback: Callable[[], Awaitable[bool]] | None = None,
         shell_enabled_provider: Callable[[], bool] = lambda: True,
+        agent_name: str | None = None,
     ) -> None:
         history_dir = get_share_dir() / "user-history"
         history_dir.mkdir(parents=True, exist_ok=True)
@@ -1198,6 +1199,7 @@ class CustomPromptSession:
         self._plan_mode_toggle_callback = plan_mode_toggle_callback
         self._model_capabilities = model_capabilities
         self._model_name = model_name
+        self._agent_name = agent_name
         self._last_history_content: str | None = None
         self._mode: PromptMode = PromptMode.AGENT
         self._thinking = thinking
@@ -2104,18 +2106,25 @@ class CustomPromptSession:
         # Mode indicator (agent / shell) + model name + thinking indicator.
         # Degrade gracefully on narrow terminals:
         #   full: "agent (model-name ○)"  → mid: "agent ○"  → bare: "agent"
+        # With agent name: "default:agent (model-name ○)" → "default:agent ○" → "default:agent"
         mode = str(self._mode)
+        agent_prefix = ""
+        if self._mode == PromptMode.AGENT and self._agent_name:
+            agent_prefix = f"{self._agent_name}:"
         if self._mode == PromptMode.AGENT and self._model_name:
             thinking_dot = "●" if self._thinking else "○"
             mode_full = f"{mode} ({self._model_name} {thinking_dot})"
             mode_mid = f"{mode} {thinking_dot}"
-            if _display_width(mode_full) <= remaining - 2:
+            if _display_width(agent_prefix + mode_full) <= remaining - 2:
                 mode = mode_full
-            elif _display_width(mode_mid) <= remaining - 2:
+            elif _display_width(agent_prefix + mode_mid) <= remaining - 2:
                 mode = mode_mid
             # else: keep bare mode name — model_name and dot are both dropped
+        # Render agent prefix in gray, then mode
+        if agent_prefix:
+            fragments.extend([(tc.agent_name, agent_prefix)])
         fragments.extend([("", mode), ("", "  ")])
-        remaining -= _display_width(mode) + 2
+        remaining -= _display_width(agent_prefix + mode) + 2
 
         # CWD (truncated from left) + git branch with status badge
         # Degrade gracefully on narrow terminals: full → cwd-only → truncated cwd → skip

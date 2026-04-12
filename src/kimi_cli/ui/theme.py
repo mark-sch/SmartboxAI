@@ -144,6 +144,7 @@ class ToolbarColors:
     cwd: str
     bg_tasks: str
     tip: str
+    agent_name: str
 
 
 _TOOLBAR_DARK = ToolbarColors(
@@ -154,6 +155,7 @@ _TOOLBAR_DARK = ToolbarColors(
     cwd="fg:#666666",
     bg_tasks="fg:#888888",
     tip="fg:#555555",
+    agent_name="fg:#7c8594",
 )
 
 _TOOLBAR_LIGHT = ToolbarColors(
@@ -164,6 +166,7 @@ _TOOLBAR_LIGHT = ToolbarColors(
     cwd="fg:#6b7280",
     bg_tasks="fg:#4b5563",
     tip="fg:#9ca3af",
+    agent_name="fg:#6b7280",
 )
 
 
