@@ -362,7 +362,8 @@ class Shell:
         else:
             self._start_background_task(self._auto_update())
 
-        _print_welcome_info(self.soul.name or "Kimi Code CLI", self._welcome_info)
+        welcome_message = self.soul.welcome_message if isinstance(self.soul, KimiSoul) else None
+        _print_welcome_info(self.soul.name or "Kimi Code CLI", self._welcome_info, welcome_message)
 
         if isinstance(self.soul, KimiSoul):
             watcher = NotificationWatcher(
@@ -947,6 +948,10 @@ class Shell:
             for msg in all_lost:
                 console.print(f"[yellow]Queued message dropped: {msg.command}[/yellow]")
             self._maybe_present_pending_approvals()
+            # Always clear cancel_event to prevent it from leaking to the next run.
+            # This fixes the issue where "Interrupted by user" appears repeatedly
+            # because cancel_event was not reset after RunCancelled was raised.
+            cancel_event.clear()
             remove_sigint()
         return False
 
@@ -1399,8 +1404,12 @@ class WelcomeInfoItem:
     level: Level = Level.INFO
 
 
-def _print_welcome_info(name: str, info_items: list[WelcomeInfoItem]) -> None:
-    head = Text.from_markup("Welcome to SmartboxAI Terminal!")
+def _print_welcome_info(
+    name: str,
+    info_items: list[WelcomeInfoItem],
+    welcome_message: str | None = None,
+) -> None:
+    head = Text.from_markup(welcome_message or "Welcome to SmartboxAI Terminal!")
     help_text = Text.from_markup("[grey50]Send /help for help information.[/grey50]")
 
     # Use Table for precise width control

@@ -388,6 +388,7 @@ class Agent:
     toolset: Toolset
     runtime: Runtime
     """Each agent has its own runtime, which should be derived from its main agent."""
+    welcome_message: str | None = None
 
 
 async def load_agent(
@@ -498,6 +499,7 @@ async def load_agent(
         system_prompt=system_prompt,
         toolset=toolset,
         runtime=runtime,
+        welcome_message=agent_spec.welcome_message,
     )
 
 

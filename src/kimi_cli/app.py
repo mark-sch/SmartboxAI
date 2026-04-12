@@ -496,16 +496,28 @@ class KimiCLI:
 
             check_update_gate()
 
+        # Agent-spezifische Labels für Lokalisierung
+        _is_de = self._soul.name == "defaultDE"
+        welcome_labels = {
+            "directory": "Verzeichnis" if _is_de else "Directory",
+            "session": "Sitzung" if _is_de else "Session",
+            "api_url": "API-URL" if _is_de else "API URL",
+            "api_key": "API-Schlüssel" if _is_de else "API Key",
+            "model": "Modell" if _is_de else "Model",
+            "tip": "Tipp" if _is_de else "Tip",
+        }
+
         welcome_info = [
             WelcomeInfoItem(
-                name="Directory", value=str(shorten_home(self._runtime.session.work_dir))
+                name=welcome_labels["directory"],
+                value=str(shorten_home(self._runtime.session.work_dir)),
             ),
-            WelcomeInfoItem(name="Session", value=self._runtime.session.id),
+            WelcomeInfoItem(name=welcome_labels["session"], value=self._runtime.session.id),
         ]
         if base_url := self._env_overrides.get("KIMI_BASE_URL"):
             welcome_info.append(
                 WelcomeInfoItem(
-                    name="API URL",
+                    name=welcome_labels["api_url"],
                     value=f"{base_url} (from KIMI_BASE_URL)",
                     level=WelcomeInfoItem.Level.WARN,
                 )
@@ -513,31 +525,38 @@ class KimiCLI:
         if self._env_overrides.get("KIMI_API_KEY"):
             welcome_info.append(
                 WelcomeInfoItem(
-                    name="API Key",
+                    name=welcome_labels["api_key"],
                     value="****** (from KIMI_API_KEY)",
                     level=WelcomeInfoItem.Level.WARN,
                 )
             )
         if not self._runtime.llm:
+            _model_val = (
+                "nicht gesetzt, /login zum Anmelden" if _is_de else "not set, send /login to login"
+            )
             welcome_info.append(
                 WelcomeInfoItem(
-                    name="Model",
-                    value="not set, send /login to login",
+                    name=welcome_labels["model"],
+                    value=_model_val,
                     level=WelcomeInfoItem.Level.WARN,
                 )
             )
         elif "KIMI_MODEL_NAME" in self._env_overrides:
+            if _is_de:
+                _model_src = f"{self._soul.model_name} (aus KIMI_MODEL_NAME)"
+            else:
+                _model_src = f"{self._soul.model_name} (from KIMI_MODEL_NAME)"
             welcome_info.append(
                 WelcomeInfoItem(
-                    name="Model",
-                    value=f"{self._soul.model_name} (from KIMI_MODEL_NAME)",
+                    name=welcome_labels["model"],
+                    value=_model_src,
                     level=WelcomeInfoItem.Level.WARN,
                 )
             )
         else:
             welcome_info.append(
                 WelcomeInfoItem(
-                    name="Model",
+                    name=welcome_labels["model"],
                     value=model_display_name(self._soul.model_name),
                     level=WelcomeInfoItem.Level.INFO,
                 )
@@ -548,17 +567,27 @@ class KimiCLI:
                 "kimi-k2.5",
                 "kimi-k2-5",
             ):
+                _tip_val = (
+                    "/login senden, um unser neuestes kimi-k2.5 Modell zu nutzen"
+                    if _is_de
+                    else "send /login to use our latest kimi-k2.5 model"
+                )
                 welcome_info.append(
                     WelcomeInfoItem(
-                        name="Tip",
-                        value="send /login to use our latest kimi-k2.5 model",
+                        name=welcome_labels["tip"],
+                        value=_tip_val,
                         level=WelcomeInfoItem.Level.WARN,
                     )
                 )
         welcome_info.append(
             WelcomeInfoItem(
-                name="\nTip",
+                name=f"\n{welcome_labels['tip']}",
                 value=(
+                    "Einen Fehler gefunden oder Feedback? /feedback in dieser Sitzung eingeben"
+                    " — jeder Bericht macht Kimi besser."
+                )
+                if _is_de
+                else (
                     "Spot a bug or have feedback? Type /feedback right in this session"
                     " — every report makes Kimi better."
                 ),

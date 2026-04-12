@@ -1,0 +1,5 @@
+version: 1
+agent:
+  extend: defaultDE
+  name: "defaultDE/coder"
+  when_to_use: "Für Software-Entwicklungsaufgaben auf Deutsch."

@@ -177,6 +177,10 @@ class KimiSoul:
         return self._agent.name
 
     @property
+    def welcome_message(self) -> str | None:
+        return self._agent.welcome_message
+
+    @property
     def model_name(self) -> str:
         return self._runtime.llm.chat_provider.model_name if self._runtime.llm else ""
 

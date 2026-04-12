@@ -18,6 +18,7 @@ def get_agents_dir() -> Path:
 
 
 DEFAULT_AGENT_FILE = get_agents_dir() / "default" / "agent.yaml"
+DEFAULT_DE_AGENT_FILE = get_agents_dir() / "defaultDE" / "agent.yaml"
 OKABE_AGENT_FILE = get_agents_dir() / "okabe" / "agent.yaml"
 EXPLORE_AGENT_FILE = get_agents_dir() / "explore" / "agent.yaml"
 
@@ -34,6 +35,9 @@ class AgentSpec(BaseModel):
 
     extend: str | None = Field(default=None, description="Agent file to extend")
     name: str | Inherit = Field(default=inherit, description="Agent name")  # required
+    welcome_message: str | None = Field(
+        default=None, description="Custom welcome message for the UI"
+    )
     system_prompt_path: Path | Inherit = Field(
         default=inherit, description="System prompt path"
     )  # required
@@ -72,6 +76,7 @@ class ResolvedAgentSpec:
     allowed_tools: list[str] | None
     exclude_tools: list[str]
     subagents: dict[str, SubagentSpec]
+    welcome_message: str | None
 
 
 def load_agent_spec(agent_file: Path) -> ResolvedAgentSpec:
@@ -106,6 +111,7 @@ def load_agent_spec(agent_file: Path) -> ResolvedAgentSpec:
         allowed_tools=agent_spec.allowed_tools,
         exclude_tools=agent_spec.exclude_tools or [],
         subagents=agent_spec.subagents or {},
+        welcome_message=agent_spec.welcome_message,
     )
 
 
@@ -135,6 +141,8 @@ def _load_agent_spec(agent_file: Path) -> AgentSpec:
     if agent_spec.extend:
         if agent_spec.extend == "default":
             base_agent_file = DEFAULT_AGENT_FILE
+        elif agent_spec.extend == "defaultDE":
+            base_agent_file = DEFAULT_DE_AGENT_FILE
         else:
             base_agent_file = (agent_file.parent / agent_spec.extend).absolute()
         base_agent_spec = _load_agent_spec(base_agent_file)
