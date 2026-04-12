@@ -2,16 +2,14 @@ from __future__ import annotations
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-hiddenimports = collect_submodules("kimi_cli.tools") + [
-    "setproctitle",
-    # CLI subcommands are lazily loaded - must be explicitly included
-    "kimi_cli.cli.info",
-    "kimi_cli.cli.export",
-    "kimi_cli.cli.mcp",
-    "kimi_cli.cli.plugin",
-    "kimi_cli.cli.vis",
-    "kimi_cli.cli.web",
+from kimi_cli.cli._lazy_group import LazySubcommandGroup
+
+lazy_cli_hiddenimports = [
+    module_name
+    for module_name, _attribute_name, _help_text in (LazySubcommandGroup.lazy_subcommands.values())
 ]
+
+hiddenimports = collect_submodules("kimi_cli.tools") + lazy_cli_hiddenimports + ["setproctitle"]
 datas = (
     collect_data_files(
         "kimi_cli",

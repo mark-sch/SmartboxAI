@@ -11,6 +11,14 @@ Only write entries that are worth mentioning to users.
 
 ## Unreleased
 
+- Core: Truncate MCP tool output to 100K characters to prevent context overflow — all content types (text and inline media such as image/audio/video data URLs) share a single character budget; tools like Playwright that return full DOMs (500KB+) or large base64 screenshots are now capped with a truncation notice; oversized media parts are dropped; unsupported MCP content types are gracefully handled instead of crashing the turn
+- CLI: Fix PyInstaller binary missing lazy CLI subcommands — `kimi info`, `kimi export`, `kimi mcp`, `kimi plugin`, `kimi vis`, and `kimi web` now work correctly in the standalone binary distribution
+
+## 1.31.0 (2026-04-10)
+
+- Core: Cap `list_directory` output as a depth-limited tree to prevent token-limit blowup in large directories — replaces the unbounded flat listing with a 2-level tree (root: 30 entries, child: 10 per subdirectory), dirs-first alphabetical sorting, and `"... and N more"` truncation hints so the model knows to explore further (fixes #1809)
+- Shell: Add blocking update gate on interactive shell startup — when a newer version is detected (from the existing background check cache), a blocking prompt appears before the shell loads, offering `[Enter]` to upgrade immediately, `[q]` to continue and be reminded next time, or `[s]` to skip reminders for that version; respects the `KIMI_CLI_NO_AUTO_UPDATE` environment variable; replaces the previous repeating toast notification for available updates
+- Auth: Harden OAuth token refresh to prevent unnecessary re-login — 401 errors now trigger automatic token refresh and retry instead of forcing `/login`; multiple simultaneous CLI instances coordinate refresh via a cross-process file lock to avoid race conditions; token persistence uses atomic writes with `fsync` to prevent corruption; adds dynamic refresh threshold, 5xx retry during token refresh, and proper token revocation cleanup
 - Core: Fix agent loop silently stopping when model response contains only thinking content — detect think-only responses (reasoning content with no text or tool calls) as an incomplete response error and retry automatically
 - Core: Fix crash on streaming mid-flight network disconnection — when the OpenAI SDK raises a base `APIError` (instead of `APIConnectionError`) during long-running streams, the error is now correctly classified as retryable, enabling automatic retry and connection recovery instead of an unrecoverable crash
 - Shell: Exclude empty current session from `/sessions` picker — completely empty sessions (no conversation history and no custom title) are no longer shown in the session list; sessions with a custom title are still displayed
