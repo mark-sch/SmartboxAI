@@ -659,7 +659,7 @@ async def login_kimi_code(
     oauth_ref = save_tokens(oauth_ref, token)
 
     try:
-        models = await list_models(platform, token.access_token)
+        models = await list_models(platform, token.access_token, require_context_length=True)
     except Exception as exc:
         logger.error("Failed to get models: {error}", error=exc)
         yield OAuthEvent("error", f"Failed to get models: {exc}")

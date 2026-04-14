@@ -55,6 +55,12 @@ def _kimi_code_base_url() -> str:
     return "https://api.kimi.com/coding/v1"
 
 
+def _kimi_code_proxy_base_url() -> str:
+    if base_url := os.getenv("KIMI_CODE_PROXY_URL"):
+        return base_url
+    return "http://localhost:3000"
+
+
 PLATFORMS: list[Platform] = [
     Platform(
         id=KIMI_CODE_PLATFORM_ID,
@@ -62,6 +68,11 @@ PLATFORMS: list[Platform] = [
         base_url=_kimi_code_base_url(),
         search_url=f"{_kimi_code_base_url()}/search",
         fetch_url=f"{_kimi_code_base_url()}/fetch",
+    ),
+    Platform(
+        id="kimi-code-proxy",
+        name="Smartbox LLM Proxy",
+        base_url=_kimi_code_proxy_base_url(),
     ),
     Platform(
         id="moonshot-cn",
@@ -153,7 +164,7 @@ async def refresh_managed_models(config: Config) -> bool:
             )
             continue
         try:
-            models = await list_models(platform, api_key)
+            models = await list_models(platform, api_key, require_context_length=True)
         except Exception as exc:
             logger.error(
                 "Failed to refresh models for {platform}: {error}",
@@ -177,17 +188,24 @@ async def refresh_managed_models(config: Config) -> bool:
     return changed
 
 
-async def list_models(platform: Platform, api_key: str) -> list[ModelInfo]:
+async def list_models(
+    platform: Platform,
+    api_key: str,
+    *,
+    require_context_length: bool = False,
+) -> list[ModelInfo]:
     async with new_client_session() as session:
         models = await _list_models(
             session,
             base_url=platform.base_url,
             api_key=api_key,
         )
-    if platform.allowed_prefixes is None:
-        return models
-    prefixes = tuple(platform.allowed_prefixes)
-    return [model for model in models if model.id.startswith(prefixes)]
+    if platform.allowed_prefixes is not None:
+        prefixes = tuple(platform.allowed_prefixes)
+        models = [model for model in models if model.id.startswith(prefixes)]
+    if require_context_length:
+        models = [model for model in models if model.context_length > 0]
+    return models
 
 
 async def _list_models(
@@ -216,10 +234,16 @@ async def _list_models(
         model_id = item.get("id")
         if not model_id:
             continue
+        raw_context = (
+            item.get("context_length")
+            or item.get("n_ctx_train")
+            or (isinstance(item.get("meta"), dict) and item.get("meta", {}).get("n_ctx_train"))
+        )
+        context_length = int(raw_context) if raw_context is not None else 0
         result.append(
             ModelInfo(
                 id=str(model_id),
-                context_length=int(item.get("context_length") or 0),
+                context_length=context_length,
                 supports_reasoning=bool(item.get("supports_reasoning")),
                 supports_image_in=bool(item.get("supports_image_in")),
                 supports_video_in=bool(item.get("supports_video_in")),
@@ -234,6 +258,13 @@ def _apply_models(
     platform_id: str,
     models: list[ModelInfo],
 ) -> bool:
+    if not models:
+        logger.warning(
+            "No models returned for {platform}, skipping update to avoid clearing existing models.",
+            platform=platform_id,
+        )
+        return False
+
     changed = False
     model_keys: list[str] = []
 
