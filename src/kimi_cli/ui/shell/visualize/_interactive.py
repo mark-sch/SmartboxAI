@@ -194,6 +194,7 @@ class _PromptLiveView(_LiveView):
     # -- Visualize loop ------------------------------------------------------
 
     async def visualize_loop(self, wire: WireUISide):
+        self.start_timer()
         # Declare outside try so finally can always cancel them.
         wire_task: asyncio.Task[WireMessage] | None = None
         external_task: asyncio.Task[WireMessage] | None = None
@@ -241,6 +242,7 @@ class _PromptLiveView(_LiveView):
             # (run_soul_command → wait_for_btw_dismiss) AFTER visualize_loop
             # returns, because run_soul gives ui_task only a 0.5s timeout.
         finally:
+            self.stop_timer()
             self._external_messages.shutdown(immediate=True)
             for task in (wire_task, external_task):
                 if task is None:
@@ -354,6 +356,13 @@ class _PromptLiveView(_LiveView):
         super().dispatch_wire_message(msg)
 
     # -- Running prompt rendering --------------------------------------------
+
+    def on_timer_tick(self) -> None:
+        self._prompt_session.set_duration_text(self._build_footer_text())
+
+    def stop_timer(self) -> None:
+        super().stop_timer()
+        self._prompt_session.set_duration_text(self._build_footer_text())
 
     def render_agent_status(self, columns: int) -> ANSI:
         """Render agent streaming output — always visible regardless of modal.

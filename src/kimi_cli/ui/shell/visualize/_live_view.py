@@ -9,9 +9,13 @@ Rich renderable via ``compose()``.  The Rich ``Live`` context drives refresh.
 from __future__ import annotations
 
 import asyncio
+import base64
+import json
+import time
 from collections import deque
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
+from typing import Any
 
 from kosong.message import Message
 from kosong.tooling import ToolError, ToolOk
@@ -127,6 +131,57 @@ class _LiveView:
         self._need_recompose = False
         self._external_messages: Queue[WireMessage] = Queue()
 
+        self._proxy_metrics: dict[str, Any] | None = None
+        self._start_time: float | None = None
+        self._elapsed_ms: float = 0
+        self._timer_task: asyncio.Task[Any] | None = None
+
+    def start_timer(self) -> None:
+        self._start_time = time.time() * 1000
+        self._elapsed_ms = 0
+        self._proxy_metrics = None
+        if self._timer_task is not None:
+            self._timer_task.cancel()
+        self._timer_task = asyncio.create_task(self._timer_loop())
+
+    def stop_timer(self) -> None:
+        if self._timer_task is not None:
+            self._timer_task.cancel()
+            self._timer_task = None
+        if self._start_time is not None:
+            self._elapsed_ms = time.time() * 1000 - self._start_time
+        self.on_timer_tick()
+
+    async def _timer_loop(self) -> None:
+        while True:
+            await asyncio.sleep(0.1)
+            if self._start_time is not None:
+                self._elapsed_ms = time.time() * 1000 - self._start_time
+                self.refresh_soon()
+                self.on_timer_tick()
+
+    def on_timer_tick(self) -> None:
+        pass
+
+    def _build_footer_text(self) -> str:
+        if self._start_time is None:
+            return ""
+        seconds = self._elapsed_ms / 1000
+        if self._proxy_metrics and self._proxy_metrics.get("output_tok_s") is not None:
+            return f"duration: {seconds:.2f}s | out={self._proxy_metrics['output_tok_s']:.2f} tok/s"
+        return f"duration: {seconds:.2f}s"
+
+    def _strip_proxy_metrics(self, text: str) -> str:
+        prefix = "\ue000PROXY_METRICS:"
+        idx = text.find(prefix)
+        if idx == -1:
+            return text
+        suffix = text[idx + len(prefix) :]
+        with suppress(Exception):
+            self._proxy_metrics = json.loads(base64.b64decode(suffix).decode("utf-8"))
+            self.on_timer_tick()
+        return text[:idx]
+
     def _reset_live_shape(self, live: Live) -> None:
         # Rich doesn't expose a public API to clear Live's cached render height.
         # After leaving the pager, stale height causes cursor restores to jump,
@@ -147,98 +202,105 @@ class _LiveView:
         return msg, asyncio.create_task(self._external_messages.get())
 
     async def visualize_loop(self, wire: WireUISide):
-        with Live(
-            self.compose(),
-            console=console,
-            refresh_per_second=10,
-            transient=True,
-            vertical_overflow="visible",
-        ) as live:
+        self.start_timer()
+        try:
+            with Live(
+                self.compose(),
+                console=console,
+                refresh_per_second=10,
+                transient=True,
+                vertical_overflow="visible",
+            ) as live:
 
-            async def keyboard_handler(listener: KeyboardListener, event: KeyEvent) -> None:
-                # Handle Ctrl+E specially - pause Live while the pager is active
-                if event == KeyEvent.CTRL_E:
-                    if self.has_expandable_panel():
+                async def keyboard_handler(listener: KeyboardListener, event: KeyEvent) -> None:
+                    # Handle Ctrl+E specially - pause Live while the pager is active
+                    if event == KeyEvent.CTRL_E:
+                        if self.has_expandable_panel():
+                            await listener.pause()
+                            live.stop()
+                            try:
+                                self._show_expandable_panel_content()
+                            finally:
+                                # Reset live render shape so the next refresh re-anchors cleanly.
+                                self._reset_live_shape(live)
+                                live.start()
+                                live.update(self.compose(), refresh=True)
+                                await listener.resume()
+                        return
+
+                    # Handle ENTER/SPACE on question panel when "Other" is selected
+                    if self._should_prompt_question_other_for_key(event):
+                        panel = self._current_question_panel
+                        assert panel is not None
+                        question_text = panel.current_question_text
                         await listener.pause()
                         live.stop()
                         try:
-                            self._show_expandable_panel_content()
+                            text = await prompt_other_input(question_text)
                         finally:
-                            # Reset live render shape so the next refresh re-anchors cleanly.
                             self._reset_live_shape(live)
                             live.start()
-                            live.update(self.compose(), refresh=True)
                             await listener.resume()
-                    return
 
-                # Handle ENTER/SPACE on question panel when "Other" is selected
-                if self._should_prompt_question_other_for_key(event):
-                    panel = self._current_question_panel
-                    assert panel is not None
-                    question_text = panel.current_question_text
-                    await listener.pause()
-                    live.stop()
-                    try:
-                        text = await prompt_other_input(question_text)
-                    finally:
-                        self._reset_live_shape(live)
-                        live.start()
-                        await listener.resume()
-
-                    self._submit_question_other_text(text)
-                    live.update(self.compose(), refresh=True)
-                    return
-
-                self.dispatch_keyboard_event(event)
-                if self._need_recompose:
-                    live.update(self.compose(), refresh=True)
-                    self._need_recompose = False
-
-            async with _keyboard_listener(keyboard_handler):
-                wire_task = asyncio.create_task(wire.receive())
-                external_task = asyncio.create_task(self._external_messages.get())
-                while True:
-                    try:
-                        done, _ = await asyncio.wait(
-                            [wire_task, external_task],
-                            return_when=asyncio.FIRST_COMPLETED,
-                        )
-                        if wire_task in done:
-                            msg = wire_task.result()
-                            wire_task = asyncio.create_task(wire.receive())
-                        else:
-                            msg = external_task.result()
-                            external_task = asyncio.create_task(self._external_messages.get())
-                    except QueueShutDown:
-                        msg, external_task = await self._drain_external_message_after_wire_shutdown(
-                            external_task
-                        )
-                        if msg is not None:
-                            self.dispatch_wire_message(msg)
-                            if self._need_recompose:
-                                live.update(self.compose(), refresh=True)
-                                self._need_recompose = False
-                            continue
-                        self.cleanup(is_interrupt=False)
+                        self._submit_question_other_text(text)
                         live.update(self.compose(), refresh=True)
-                        break
+                        return
 
-                    if isinstance(msg, StepInterrupted):
-                        self.cleanup(is_interrupt=True)
-                        live.update(self.compose(), refresh=True)
-                        break
-
-                    self.dispatch_wire_message(msg)
+                    self.dispatch_keyboard_event(event)
                     if self._need_recompose:
                         live.update(self.compose(), refresh=True)
                         self._need_recompose = False
-                wire_task.cancel()
-                external_task.cancel()
-                self._external_messages.shutdown(immediate=True)
-                with suppress(asyncio.CancelledError, QueueShutDown):
-                    await wire_task
-                with suppress(asyncio.CancelledError, QueueShutDown):
-                    await external_task
+
+                async with _keyboard_listener(keyboard_handler):
+                    wire_task = asyncio.create_task(wire.receive())
+                    external_task = asyncio.create_task(self._external_messages.get())
+                    while True:
+                        try:
+                            done, _ = await asyncio.wait(
+                                [wire_task, external_task],
+                                return_when=asyncio.FIRST_COMPLETED,
+                            )
+                            if wire_task in done:
+                                msg = wire_task.result()
+                                wire_task = asyncio.create_task(wire.receive())
+                            else:
+                                msg = external_task.result()
+                                external_task = asyncio.create_task(self._external_messages.get())
+                        except QueueShutDown:
+                            (
+                                msg,
+                                external_task,
+                            ) = await self._drain_external_message_after_wire_shutdown(
+                                external_task
+                            )
+                            if msg is not None:
+                                self.dispatch_wire_message(msg)
+                                if self._need_recompose:
+                                    live.update(self.compose(), refresh=True)
+                                    self._need_recompose = False
+                                continue
+                            self.cleanup(is_interrupt=False)
+                            live.update(self.compose(), refresh=True)
+                            break
+
+                        if isinstance(msg, StepInterrupted):
+                            self.cleanup(is_interrupt=True)
+                            live.update(self.compose(), refresh=True)
+                            break
+
+                        self.dispatch_wire_message(msg)
+                        if self._need_recompose:
+                            live.update(self.compose(), refresh=True)
+                            self._need_recompose = False
+                    wire_task.cancel()
+                    external_task.cancel()
+                    self._external_messages.shutdown(immediate=True)
+                    with suppress(asyncio.CancelledError, QueueShutDown):
+                        await wire_task
+                    with suppress(asyncio.CancelledError, QueueShutDown):
+                        await external_task
+        finally:
+            self.stop_timer()
 
     def refresh_soon(self) -> None:
         self._need_recompose = True
@@ -629,6 +691,9 @@ class _LiveView:
     def append_content(self, part: ContentPart) -> None:
         match part:
             case ThinkPart(think=text) | TextPart(text=text):
+                if not text:
+                    return
+                text = self._strip_proxy_metrics(text)
                 if not text:
                     return
                 is_think = isinstance(part, ThinkPart)

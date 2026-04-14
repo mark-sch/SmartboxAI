@@ -1221,6 +1221,7 @@ class CustomPromptSession:
         clipboard_available = is_clipboard_available()
         self._tips = _build_toolbar_tips(clipboard_available, shell_enabled_provider())
         self._tip_rotation_index: int = random.randrange(len(self._tips)) if self._tips else 0
+        self._duration_text: str | None = None
 
         history_entries = _load_history_entries(self._history_file)
         history = InMemoryHistory()
@@ -1711,6 +1712,10 @@ class CustomPromptSession:
         delegate.handle_running_prompt_key(key, event)
         event.app.invalidate()
 
+    def set_duration_text(self, text: str) -> None:
+        self._duration_text = text or None
+        self.invalidate()
+
     def invalidate(self) -> None:
         self._sync_prompt_ui_state()
         app = get_app_or_none()
@@ -2192,7 +2197,16 @@ class CustomPromptSession:
             else:
                 left_width = 0
         else:
-            left_width = 0
+            duration = getattr(self, "_duration_text", None)
+            if duration:
+                left_text = duration
+                max_left = max(0, columns - right_width - 2)
+                if _display_width(left_text) > max_left:
+                    left_text = _truncate_right(left_text, max_left)
+                left_width = _display_width(left_text)
+                fragments.append((tc.tip, left_text))
+            else:
+                left_width = 0
 
         fragments.append(("", " " * max(0, columns - left_width - right_width)))
         fragments.append(("", right_text))
