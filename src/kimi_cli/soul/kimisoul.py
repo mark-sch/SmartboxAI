@@ -402,7 +402,9 @@ class KimiSoul:
     @property
     def _context_usage(self) -> float:
         if self._runtime.llm is not None:
-            return self._context.token_count / self._runtime.llm.max_context_size
+            max_size = self._runtime.llm.max_context_size
+            if max_size:
+                return self._context.token_count / max_size
         return 0.0
 
     @property
@@ -938,6 +940,14 @@ class KimiSoul:
             return None
         return StepOutcome(stop_reason="no_tool_calls", assistant_message=result.message)
 
+    @staticmethod
+    def _strip_proxy_metrics(text: str) -> str:
+        prefix = "\ue000PROXY_METRICS:"
+        idx = text.find(prefix)
+        if idx == -1:
+            return text
+        return text[:idx]
+
     async def _grow_context(self, result: StepResult, tool_results: list[ToolResult]):
         logger.debug("Growing context with result: {result}", result=result)
 
@@ -951,7 +961,17 @@ class KimiSoul:
                 )
                 raise LLMNotSupported(self._runtime.llm, list(missing_caps))
 
-        await self._context.append_message(result.message)
+        # Strip proxy-injected metrics from the assistant message before storing it
+        # in context so they don't leak into subsequent LLM requests.
+        message = result.message
+        _pm_prefix = "\ue000PROXY_METRICS:"
+        if any(isinstance(part, TextPart) and _pm_prefix in part.text for part in message.content):
+            message = message.model_copy(deep=True)
+            for part in message.content:
+                if isinstance(part, TextPart):
+                    part.text = self._strip_proxy_metrics(part.text)
+
+        await self._context.append_message(message)
         if result.usage is not None:
             await self._context.update_token_count(result.usage.total)
 
