@@ -74,6 +74,17 @@ class _SetupResult(NamedTuple):
 
 
 async def _setup_platform(platform: Platform) -> _SetupResult | None:
+    # For the proxy platform, ask for the proxy URL first
+    if platform.id == "kimi-code-proxy":
+        proxy_url = await _prompt_text("Enter proxy URL")
+        if not proxy_url:
+            return None
+        platform = Platform(
+            id=platform.id,
+            name=platform.name,
+            base_url=proxy_url,
+        )
+
     # enter the API key
     api_key = await _prompt_text("Enter your API key", is_password=True)
     if not api_key:
@@ -113,6 +124,24 @@ async def _setup_platform(platform: Platform) -> _SetupResult | None:
 
     selected_model = model_map[model_id]
 
+    # Prompt for context size if the API did not provide one
+    if selected_model.context_length <= 0:
+        context_size_str = await _prompt_text(
+            "Context size not provided by API. Enter context size in tokens (e.g., 32768)"
+        )
+        if not context_size_str:
+            console.print("[red]Context size is required[/red]")
+            return None
+        try:
+            context_size = int(context_size_str)
+        except ValueError:
+            console.print("[red]Invalid context size[/red]")
+            return None
+        if context_size <= 0:
+            console.print("[red]Context size must be greater than 0[/red]")
+            return None
+        selected_model = selected_model.model_copy(update={"context_length": context_size})
+
     # Determine thinking mode based on model capabilities
     capabilities = selected_model.capabilities
     thinking: bool
@@ -129,6 +158,10 @@ async def _setup_platform(platform: Platform) -> _SetupResult | None:
         thinking = thinking_selection == "on"
     else:
         thinking = False
+
+    # Update the selected model in the list and filter out any remaining invalid entries
+    models = [selected_model if m.id == selected_model.id else m for m in models]
+    models = [m for m in models if m.context_length > 0]
 
     return _SetupResult(
         platform=platform,
