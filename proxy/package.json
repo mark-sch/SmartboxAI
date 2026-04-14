@@ -1,0 +1,16 @@
+{
+  "name": "smartbox-llm-proxy",
+  "version": "1.0.0",
+  "description": "A 1:1 proxy server for Kimi Code CLI that forwards requests to a configurable target",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -561,16 +561,15 @@ class KimiCLI:
                     level=WelcomeInfoItem.Level.INFO,
                 )
             )
-            if self._soul.model_name not in (
+            model_name = self._soul.model_name
+            if model_name not in (
                 "kimi-for-coding",
                 "kimi-code",
-                "kimi-k2.5",
-                "kimi-k2-5",
-            ):
+            ) and not model_name.startswith("kimi-k2"):
                 _tip_val = (
-                    "/login senden, um unser neuestes kimi-k2.5 Modell zu nutzen"
+                    "/login senden, um Kimi for Coding zu nutzen"
                     if _is_de
-                    else "send /login to use our latest kimi-k2.5 model"
+                    else "send /login to use Kimi for Coding"
                 )
                 welcome_info.append(
                     WelcomeInfoItem(
