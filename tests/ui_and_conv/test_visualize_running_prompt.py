@@ -275,6 +275,9 @@ async def test_prompt_live_view_processes_external_approval_messages() -> None:
         def invalidate(self) -> None:
             invalidations.append("invalidate")
 
+        def set_duration_text(self, text: str) -> None:
+            pass
+
     class _Wire:
         async def receive(self):
             await asyncio.Event().wait()
