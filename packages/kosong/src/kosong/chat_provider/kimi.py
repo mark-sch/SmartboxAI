@@ -293,6 +293,8 @@ def _convert_message(message: Message) -> ChatCompletionMessageParam:
     for part in message.content:
         if isinstance(part, ThinkPart):
             reasoning_content += part.think
+        elif isinstance(part, ProxyMetricsPart):
+            continue
         else:
             content.append(part)
     message.content = content

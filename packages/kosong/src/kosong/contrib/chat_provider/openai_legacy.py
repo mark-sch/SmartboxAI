@@ -30,7 +30,15 @@ from kosong.chat_provider.openai_common import (
     tool_to_openai,
 )
 from kosong.contrib.chat_provider.common import ToolMessageConversion
-from kosong.message import ContentPart, Message, TextPart, ThinkPart, ToolCall, ToolCallPart
+from kosong.message import (
+    ContentPart,
+    Message,
+    ProxyMetricsPart,
+    TextPart,
+    ThinkPart,
+    ToolCall,
+    ToolCallPart,
+)
 from kosong.tooling import Tool
 
 if TYPE_CHECKING:
@@ -204,6 +212,8 @@ class OpenAILegacy:
         for part in message.content:
             if isinstance(part, ThinkPart):
                 reasoning_content += part.think
+            elif isinstance(part, ProxyMetricsPart):
+                continue
             else:
                 content.append(part)
         # if tool message and `tool_result_conversion` is `extract_text`, patch all text parts into
