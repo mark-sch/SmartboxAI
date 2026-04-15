@@ -601,8 +601,19 @@ app.all('*', async (req, res) => {
       }
 
       function flushMetricsAndDone(metrics) {
-        const metricsPayload = Buffer.from(JSON.stringify(metrics)).toString('base64');
-        res.write(`data: {"choices":[{"delta":{"content":"\\uE000PROXY_METRICS:${metricsPayload}"},"finish_reason":null}]}\n\n`);
+        const messageId = (() => {
+          try {
+            const firstDataLine = streamBuffer.split('\n').find((l) => l.trim().startsWith('data:') && l.trim().slice(5).trim() !== '[DONE]');
+            if (firstDataLine) {
+              const firstData = JSON.parse(firstDataLine.trim().slice(5).trim());
+              return firstData.id || '';
+            }
+          } catch {
+            // ignore
+          }
+          return '';
+        })();
+        res.write(`data: {"id":"${messageId}","object":"chat.completion.chunk","created":${Math.floor(Date.now() / 1000)},"model":"","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"proxy_metrics":${JSON.stringify(metrics)}}\n\n`);
         res.write(`event: proxy_metrics\ndata: ${JSON.stringify(metrics)}\n\n`);
         res.write('data: [DONE]\n\n');
       }
@@ -801,12 +812,8 @@ app.all('*', async (req, res) => {
           }
           bodyText = JSON.stringify(data);
         }
-        const metricsPayload = Buffer.from(JSON.stringify(metrics)).toString('base64');
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-          const originalContent = data.choices[0].message.content || '';
-          data.choices[0].message.content = originalContent + `\uE000PROXY_METRICS:${metricsPayload}`;
-          bodyText = JSON.stringify(data);
-        }
+        data.proxy_metrics = metrics;
+        bodyText = JSON.stringify(data);
       } catch (e) {
         // ignore injection errors
       }

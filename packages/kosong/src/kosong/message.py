@@ -111,6 +111,19 @@ class ThinkPart(ContentPart):
         return True
 
 
+class ProxyMetricsPart(ContentPart):
+    """
+    >>> ProxyMetricsPart(total_time=1.5, ttft=0.8).model_dump()
+    {'type': 'proxy_metrics', 'total_time': 1.5, 'ttft': 0.8}
+    """
+
+    type: str = "proxy_metrics"
+    total_time: float
+    ttft: float
+    input_tok_s: float | None = None
+    output_tok_s: float | None = None
+
+
 class ImageURLPart(ContentPart):
     """
     >>> ImageURLPart(

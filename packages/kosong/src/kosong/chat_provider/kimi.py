@@ -35,6 +35,7 @@ from kosong.chat_provider.openai_common import (
 from kosong.message import (
     ContentPart,
     Message,
+    ProxyMetricsPart,
     TextPart,
     ThinkPart,
     ToolCall,
@@ -384,6 +385,8 @@ class KimiStreamedMessage:
                             arguments=tool_call.function.arguments,
                         ),
                     )
+        if proxy_metrics := getattr(response, "proxy_metrics", None):
+            yield ProxyMetricsPart(**proxy_metrics)
 
     async def _convert_stream_response(
         self,
@@ -430,6 +433,8 @@ class KimiStreamedMessage:
                     else:
                         # skip empty tool calls
                         pass
+                if proxy_metrics := getattr(chunk, "proxy_metrics", None):
+                    yield ProxyMetricsPart(**proxy_metrics)
         except (OpenAIError, httpx.HTTPError) as e:
             raise convert_error(e) from e
 

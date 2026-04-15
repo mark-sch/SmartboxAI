@@ -60,6 +60,7 @@ from kimi_cli.wire.types import (
     MCPLoadingEnd,
     Notification,
     PlanDisplay,
+    ProxyMetricsPart,
     QuestionRequest,
     StatusUpdate,
     SteerInput,
@@ -500,6 +501,10 @@ class _LiveView:
                 self._status_block.update(msg)
             case Notification():
                 self.append_notification(msg)
+            case ProxyMetricsPart():
+                self._proxy_metrics = msg.model_dump(mode="json")
+                self.on_timer_tick()
+                self.refresh_soon()
             case ContentPart():
                 self.append_content(msg)
             case ToolCall():

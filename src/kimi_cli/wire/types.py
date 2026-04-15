@@ -8,6 +8,7 @@ from kosong.message import (
     AudioURLPart,
     ContentPart,
     ImageURLPart,
+    ProxyMetricsPart,
     TextPart,
     ThinkPart,
     ToolCall,
@@ -519,6 +520,7 @@ type Event = (
     | PlanDisplay
     | BtwBegin
     | BtwEnd
+    | ProxyMetricsPart
 )
 """Any event, including control flow and content/tooling events."""
 
@@ -679,6 +681,7 @@ __all__ = [
     # `StatusUpdate`-related
     "TokenUsage",
     # `ContentPart` types
+    "ProxyMetricsPart",
     "TextPart",
     "ThinkPart",
     "ImageURLPart",
