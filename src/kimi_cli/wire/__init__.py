@@ -10,7 +10,7 @@ from kimi_cli.utils.aioqueue import Queue, QueueShutDown
 from kimi_cli.utils.broadcast import BroadcastQueue
 from kimi_cli.utils.logging import logger
 from kimi_cli.wire.file import WireFile
-from kimi_cli.wire.types import ContentPart, ToolCallPart, WireMessage, is_wire_message
+from kimi_cli.wire.types import ContentPart, TextPart, ToolCallPart, WireMessage, is_wire_message
 
 WireMessageQueue = BroadcastQueue[WireMessage]
 
@@ -145,4 +145,10 @@ class _WireRecorder:
                 break
 
     async def _record(self, msg: WireMessage) -> None:
+        if isinstance(msg, TextPart):
+            prefix = "\ue000PROXY_METRICS:"
+            text = msg.text
+            idx = text.find(prefix)
+            if idx != -1:
+                msg = msg.model_copy(update={"text": text[:idx]})
         await self._wire_file.append_message(msg)

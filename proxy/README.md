@@ -9,6 +9,7 @@ A lightweight Node.js/Express proxy server for Kimi Code CLI.
 - Forwards requests 1:1 to a configurable target URL (e.g. the real Kimi Code API)
 - Supports streaming (`text/event-stream`) transparently
 - **Auto-refreshes** the target access token via OAuth when `PROXY_REFRESH_TOKEN` is configured
+- **Session Logging**: Persists `wire.jsonl`, `context.jsonl`, and `state.json` per detected Kimi CLI session (based on `prompt_cache_key`)
 
 ## Setup
 
@@ -48,6 +49,22 @@ The proxy will listen on the configured port and log the target URL.
 3. Select **"Smartbox LLM Proxy"**
 4. Enter the proxy URL (e.g. `http://localhost:3000`) and the `PROXY_AUTH_TOKEN`
 5. The CLI will fetch available models through the proxy and behave exactly like a direct Kimi Code connection
+
+## Session Logging
+
+Whenever the proxy receives a request containing a Kimi-specific `prompt_cache_key` in the JSON body, it creates a dedicated session folder under `sessions/<session_id>/` inside the proxy directory. The following files are maintained in a format analogous to Kimi CLI:
+
+| File | Description |
+|------|-------------|
+| `wire.jsonl` | Metadata header + `ProxyRequest` / `ProxyResponse` records with timestamp |
+| `context.jsonl` | Incrementally stored chat messages from the request body; `_usage` records are appended when token usage is available |
+| `state.json` | Session state initialized with the same default structure as Kimi CLI |
+
+Session IDs are also prefixed in all proxy `info` level console logs.
+
+### Timing notes
+
+The `total_time` field in `ProxyResponse` records measures the raw HTTP roundtrip from the internal `fetch()` call until the last response byte is consumed. Because Kimi CLI's "LLM step" timer wraps the entire kosong call (including request preparation), the proxy's `total_time` will typically be a few tens of milliseconds shorter or longer. This is expected and not a bug.
 
 ## Token Refresh
 
