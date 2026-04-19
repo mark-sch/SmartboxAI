@@ -45,3 +45,6 @@ static/
 .memo/
 .entire
 .claude
+
+# Smartbox LLM Proxy
+proxy
