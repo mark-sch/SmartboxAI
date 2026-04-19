@@ -62,7 +62,7 @@ model = "kimi-for-coding"
 max_context_size = 262144
 
 [loop_control]
-max_steps_per_turn = 100
+max_steps_per_turn = 500
 max_retries_per_step = 3
 max_ralph_iterations = 0
 reserved_context_size = 50000
@@ -111,6 +111,10 @@ custom_headers = { "X-Custom-Header" = "value" }
 
 `models` defines available models. Each model uses a unique name as key.
 
+::: warning Note
+If a `providers` or `models` key contains `.`, you must use a quoted TOML key. Otherwise, TOML treats `.` as a path separator and parses the key as nested tables.
+:::
+
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `provider` | `string` | Yes | Provider name to use, must be defined in `providers` |
@@ -128,13 +132,23 @@ max_context_size = 262144
 capabilities = ["thinking", "image_in"]
 ```
 
+If the model name contains `.`, use a quoted key:
+
+```toml
+[models."gpt-4.1"]
+provider = "openai"
+model = "gpt-4.1"
+max_context_size = 1047576
+capabilities = ["thinking"]
+```
+
 ### `loop_control`
 
 `loop_control` controls agent execution loop behavior.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `max_steps_per_turn` | `integer` | `100` | Maximum steps per turn (alias: `max_steps_per_run`) |
+| `max_steps_per_turn` | `integer` | `500` | Maximum steps per turn (alias: `max_steps_per_run`) |
 | `max_retries_per_step` | `integer` | `3` | Maximum retries per step |
 | `max_ralph_iterations` | `integer` | `0` | Extra iterations after each user message; `0` disables; `-1` is unlimited |
 | `reserved_context_size` | `integer` | `50000` | Reserved token count for LLM response generation; auto-compaction triggers when `context_tokens + reserved_context_size >= max_context_size` |
