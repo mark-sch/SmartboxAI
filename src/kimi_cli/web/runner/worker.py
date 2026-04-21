@@ -91,6 +91,7 @@ async def run_worker(session_id: UUID) -> None:
             session,
             mcp_configs=mcp_configs or None,
             resumed=resumed,
+            ui_mode="wire",
             agent_file=agent_file,
             agent_override=bool(agent_override),
         )
@@ -104,6 +105,7 @@ async def run_worker(session_id: UUID) -> None:
             session,
             mcp_configs=None,
             resumed=resumed,
+            ui_mode="wire",
             agent_file=agent_file,
             agent_override=bool(agent_override),
         )

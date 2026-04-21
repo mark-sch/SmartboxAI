@@ -539,13 +539,16 @@ class _LiveView:
             case _:
                 pass
 
-    def _try_submit_question(self) -> None:
+    def _try_submit_question(self, method: str = "enter") -> None:
         """Submit the current question answer; if all done, resolve and advance."""
         panel = self._current_question_panel
         if panel is None:
             return
         all_done = panel.submit()
         if all_done:
+            from kimi_cli.telemetry import track
+
+            track("question_answered", method=method)
             panel.request.resolve(panel.get_answers())
             self.show_next_question_request()
 
@@ -565,11 +568,14 @@ class _LiveView:
                     if self._current_question_panel.is_multi_select:
                         self._current_question_panel.toggle_select()
                     else:
-                        self._try_submit_question()
+                        self._try_submit_question(method="space")
                 case KeyEvent.ENTER:
                     # "Other" is handled in keyboard_handler (async context)
-                    self._try_submit_question()
+                    self._try_submit_question(method="enter")
                 case KeyEvent.ESCAPE:
+                    from kimi_cli.telemetry import track
+
+                    track("question_dismissed")
                     self._current_question_panel.request.resolve({})
                     self.show_next_question_request()
                 case (
@@ -596,7 +602,7 @@ class _LiveView:
                             panel.toggle_select()
                         elif not panel.is_other_selected:
                             # Auto-submit for single-select (unless "Other")
-                            self._try_submit_question()
+                            self._try_submit_question(method="number_key")
                 case _:
                     pass
             self.refresh_soon()
@@ -604,6 +610,9 @@ class _LiveView:
 
         # handle ESC key to cancel the run
         if event == KeyEvent.ESCAPE and self._cancel_event is not None:
+            from kimi_cli.telemetry import track
+
+            track("cancel")
             self._cancel_event.set()
             return
 

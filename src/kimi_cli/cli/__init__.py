@@ -642,6 +642,7 @@ def kimi(
                 max_ralph_iterations=max_ralph_iterations,
                 startup_progress=startup_progress.update if ui == "shell" else None,
                 defer_mcp_loading=ui == "shell" and prompt is None,
+                ui_mode=ui,
             )
             startup_progress.stop()
 
@@ -714,7 +715,8 @@ def kimi(
                     )
 
                 if not preserve_background_tasks:
-                    instance.shutdown_background_tasks()
+                    await instance.shutdown_background_tasks()
+                    await instance.await_bg_tasks_shutdown()
 
             return session, exit_code
         finally:

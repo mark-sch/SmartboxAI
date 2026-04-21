@@ -21,6 +21,7 @@ class ModelInfo(BaseModel):
     supports_reasoning: bool
     supports_image_in: bool
     supports_video_in: bool
+    display_name: str | None = None
 
     @property
     def capabilities(self) -> set[ModelCapability]:
@@ -240,6 +241,8 @@ async def _list_models(
             or (isinstance(item.get("meta"), dict) and item.get("meta", {}).get("n_ctx_train"))
         )
         context_length = int(raw_context) if raw_context is not None else 0
+        raw_display_name = item.get("display_name")
+        display_name = str(raw_display_name) if raw_display_name else None
         result.append(
             ModelInfo(
                 id=str(model_id),
@@ -247,6 +250,7 @@ async def _list_models(
                 supports_reasoning=bool(item.get("supports_reasoning")),
                 supports_image_in=bool(item.get("supports_image_in")),
                 supports_video_in=bool(item.get("supports_video_in")),
+                display_name=display_name,
             )
         )
     return result
@@ -281,6 +285,7 @@ def _apply_models(
                 model=model.id,
                 max_context_size=model.context_length,
                 capabilities=capabilities,
+                display_name=model.display_name,
             )
             changed = True
             continue
@@ -296,6 +301,9 @@ def _apply_models(
             changed = True
         if existing.capabilities != capabilities:
             existing.capabilities = capabilities
+            changed = True
+        if existing.display_name != model.display_name:
+            existing.display_name = model.display_name
             changed = True
 
     removed_default = False
