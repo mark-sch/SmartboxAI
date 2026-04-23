@@ -299,6 +299,7 @@ class KimiCLI:
             startup_progress("Loading agent...")
 
         _phase_t = time.monotonic()
+        assert agent_file is not None
         agent = await load_agent(
             agent_file,
             runtime,

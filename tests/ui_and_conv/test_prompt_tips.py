@@ -676,7 +676,7 @@ def test_modal_prompt_suspends_and_restores_existing_draft_when_input_is_hidden(
         shell_mode_slash_commands=[],
     )
     prompt_session._session.default_buffer.start_completion = lambda *args, **kwargs: None  # type: ignore[method-assign]
-    prompt_session._session.default_buffer.validate_while_typing = lambda: False  # type: ignore[method-assign]
+    prompt_session._session.default_buffer.validate_while_typing = lambda: False  # pyright: ignore[reportAttributeAccessIssue]
     prompt_session._session.default_buffer.document = shell_prompt.Document(
         text="keep this draft",
         cursor_position=len("keep this draft"),
@@ -873,7 +873,7 @@ async def test_prompt_next_does_not_mark_submission_as_running_when_delegate_rel
 
     prompt_session._running_prompt_delegate = _FinishedRunningPrompt()
     prompt_session._tip_rotation_index = 0
-    prompt_session._append_history_entry = lambda _text: None  # type: ignore[assignment]
+    prompt_session._append_history_entry = lambda _text: None  # pyright: ignore[reportAttributeAccessIssue]
     prompt_session._build_user_input = lambda command: UserInput(
         mode=PromptMode.AGENT,
         command=command,

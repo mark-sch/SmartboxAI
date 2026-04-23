@@ -6,6 +6,7 @@ from typing import Any, cast
 
 import click
 import typer
+import typer.core
 from click.core import HelpFormatter
 from typer.main import get_command
 

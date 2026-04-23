@@ -104,7 +104,7 @@ async def test_background_agent_no_timeout(runtime):
     async def _fast_core(*args, **kwargs):
         completed.set()
 
-    runner._run_core = _fast_core
+    runner._run_core = _fast_core  # type: ignore[assignment]
     await runner.run()
     assert completed.is_set()
 
@@ -145,7 +145,7 @@ async def test_background_agent_internal_timeout_with_deadline_set(runtime):
     async def _raise_internal_timeout(*args, **kwargs):
         raise TimeoutError("aiohttp sock_read timeout")
 
-    runner._run_core = _raise_internal_timeout
+    runner._run_core = _raise_internal_timeout  # type: ignore[assignment]
     await runner.run()
 
     # Internal timeout should be generic failure, NOT timed_out

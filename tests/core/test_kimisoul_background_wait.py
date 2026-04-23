@@ -328,7 +328,7 @@ async def test_print_stream_json_does_not_wait_for_background_tasks(
             return "second command"
         return None
 
-    p._read_next_command = fake_read_next_command
+    p._read_next_command = fake_read_next_command  # type: ignore[assignment]
 
     async def fake_run_soul(soul_arg, user_input, *args, **kwargs):
         run_soul_calls.append(user_input)

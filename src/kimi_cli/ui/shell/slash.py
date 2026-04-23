@@ -845,10 +845,10 @@ async def fork(app: Shell, args: str):
 
 
 from . import (  # noqa: E402
-    debug,  # noqa: F401 # type: ignore[reportUnusedImport]
-    export_import,  # noqa: F401 # type: ignore[reportUnusedImport]
-    oauth,  # noqa: F401 # type: ignore[reportUnusedImport]
-    setup,  # noqa: F401 # type: ignore[reportUnusedImport]
-    update,  # noqa: F401 # type: ignore[reportUnusedImport]
-    usage,  # noqa: F401 # type: ignore[reportUnusedImport]
+    debug,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    export_import,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    oauth,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    setup,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    update,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    usage,  # noqa: F401  # pyright: ignore[reportUnusedImport]
 )

@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple, cast
 if TYPE_CHECKING:
     from markdown_it import MarkdownIt
 
-import streamingjson  # type: ignore[reportMissingTypeStubs]
+import streamingjson  # pyright: ignore[reportMissingTypeStubs]
 from rich.console import Group, RenderableType
 from rich.spinner import Spinner
 from rich.style import Style

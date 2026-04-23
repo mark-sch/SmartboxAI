@@ -195,7 +195,7 @@ class _LiveView:
         # Rich doesn't expose a public API to clear Live's cached render height.
         # After leaving the pager, stale height causes cursor restores to jump,
         # so we reset the private _shape to re-anchor the next refresh.
-        live._live_render._shape = None  # type: ignore[reportPrivateUsage]
+        live._live_render._shape = None
 
     async def _drain_external_message_after_wire_shutdown(
         self,

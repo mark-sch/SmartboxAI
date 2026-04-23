@@ -13,6 +13,7 @@ import importlib
 from typing import Any, cast
 
 import pytest
+from prompt_toolkit.key_binding.key_processor import KeyPressEvent
 
 from kimi_cli.wire.types import ApprovalRequest, ApprovalResponse, QuestionRequest, StatusUpdate
 
@@ -169,6 +170,7 @@ async def test_live_view_approve_for_session_clears_same_action() -> None:
     view.request_approval(r3)
 
     # Select "approve_for_session" on r1
+    assert view._current_approval_request_panel is not None
     view._current_approval_request_panel.selected_index = 1
     view._submit_approval()
 
@@ -312,10 +314,12 @@ async def test_reconcile_removes_externally_resolved() -> None:
     view._reconcile_approval_requests()
 
     # r1 still current
+    assert view._current_approval_request_panel is not None
     assert view._current_approval_request_panel.request is r1
     # Resolve r1, advance should skip r2 and go to r3
     r1.resolve("approve")
     view.show_next_approval_request()
+    assert view._current_approval_request_panel is not None
     assert view._current_approval_request_panel.request is r3
 
 
@@ -329,6 +333,7 @@ async def test_reconcile_advances_if_current_resolved() -> None:
     view.request_approval(r1)
     view.request_approval(r2)
 
+    assert view._current_approval_request_panel is not None
     assert view._current_approval_request_panel.request is r1
 
     # Externally resolve r1
@@ -425,7 +430,7 @@ async def test_approval_delegate_number_keys_direct_select() -> None:
                 "current_buffer": Buffer(),
             },
         )()
-        delegate.handle_running_prompt_key(key, event)
+        delegate.handle_running_prompt_key(key, cast(KeyPressEvent, event))
 
         assert request.resolved is True
         assert len(responses) == 1
@@ -889,6 +894,7 @@ async def test_external_approval_response_reconciles_queue() -> None:
     view.request_approval(r1)
     view.request_approval(r2)
 
+    assert view._current_approval_request_panel is not None
     assert view._current_approval_request_panel.request is r1
 
     # Externally resolve r1
@@ -916,6 +922,7 @@ async def test_same_request_object_queued_twice_is_in_queue() -> None:
     view.request_approval(r1)
 
     # r1 is current panel, second r1 is in queue
+    assert view._current_approval_request_panel is not None
     assert view._current_approval_request_panel.request is r1
     assert len(view._approval_request_queue) == 1
 
@@ -1007,21 +1014,19 @@ async def test_shell_external_approval_response_syncs_modal(
         source_kind="background_agent",
         source_id="t2",
     )
-    await shell._handle_root_hub_message(req1)  # type: ignore[attr-defined]
-    await shell._handle_root_hub_message(req2)  # type: ignore[attr-defined]
+    await shell._handle_root_hub_message(req1)
+    await shell._handle_root_hub_message(req2)
 
-    assert shell._approval_modal is not None  # type: ignore[attr-defined]
-    assert shell._approval_modal.request.id == "ext-r1"  # type: ignore[attr-defined]
+    assert shell._approval_modal is not None
+    assert shell._approval_modal.request.id == "ext-r1"
 
     # External resolution (web UI resolves ext-r1)
     runtime.approval_runtime.resolve("ext-r1", "approve")
-    await shell._handle_root_hub_message(  # type: ignore[attr-defined]
-        ApprovalResponse(request_id="ext-r1", response="approve")
-    )
+    await shell._handle_root_hub_message(ApprovalResponse(request_id="ext-r1", response="approve"))
 
     # Modal should have advanced to ext-r2
-    assert shell._approval_modal is not None  # type: ignore[attr-defined]
-    assert shell._approval_modal.request.id == "ext-r2"  # type: ignore[attr-defined]
+    assert shell._approval_modal is not None
+    assert shell._approval_modal.request.id == "ext-r2"
 
 
 @pytest.mark.asyncio
@@ -1069,9 +1074,9 @@ async def test_shell_forward_approval_to_sink_fallback_when_no_sink(
     )
 
     # No sink, no prompt_session — forward should fall back to queue
-    shell._forward_approval_to_sink(request)  # type: ignore[attr-defined]
+    shell._forward_approval_to_sink(request)
 
-    assert list(shell._pending_approval_requests) == [request]  # type: ignore[attr-defined]
+    assert list(shell._pending_approval_requests) == [request]
 
 
 @pytest.mark.asyncio
@@ -1174,7 +1179,7 @@ async def test_question_delegate_on_invalidate_called_on_key_press() -> None:
     event = type("_Event", (), {"current_buffer": Buffer()})()
 
     # Press "1" — should select and submit, calling on_invalidate
-    delegate.handle_running_prompt_key("1", event)
+    delegate.handle_running_prompt_key("1", cast(KeyPressEvent, event))
 
     assert len(invalidations) >= 1
 
@@ -1212,14 +1217,14 @@ async def test_shell_command_mode_starts_root_wire_hub_watcher(
     shell = Shell(soul)
 
     # Mock run_soul_command so we don't need a real LLM
-    shell.run_soul_command = AsyncMock(return_value=True)
+    shell.run_soul_command = AsyncMock(return_value=True)  # type: ignore[assignment]
 
     hub = runtime.root_wire_hub
     assert len(hub._queue._queues) == 0, "no subscribers before run"
 
     await shell.run(command="hello")
 
-    shell.run_soul_command.assert_awaited_once_with("hello")
+    cast(AsyncMock, shell.run_soul_command).assert_awaited_once_with("hello")
     # After run completes, background tasks are cleaned up
     assert len(hub._queue._queues) == 0, "subscriber cleaned up after run"
 
@@ -1261,17 +1266,17 @@ async def test_clear_active_approval_sink_requeues_pending_requests(
     )
 
     # Simulate: sink was active, request was forwarded (not queued)
-    assert len(shell._pending_approval_requests) == 0  # type: ignore[attr-defined]
+    assert len(shell._pending_approval_requests) == 0
 
     # Now the live view closes
-    shell._clear_active_view()  # type: ignore[attr-defined]
+    shell._clear_active_view()
 
     # The pending request should have been re-queued
-    pending_ids = [r.id for r in shell._pending_approval_requests]  # type: ignore[attr-defined]
+    pending_ids = [r.id for r in shell._pending_approval_requests]
     assert "sink-r1" in pending_ids
 
     # Already-resolved requests should NOT be re-queued
     runtime.approval_runtime.resolve("sink-r1", "approve")
-    shell._pending_approval_requests.clear()  # type: ignore[attr-defined]
-    shell._clear_active_view()  # type: ignore[attr-defined]
-    assert len(shell._pending_approval_requests) == 0  # type: ignore[attr-defined]
+    shell._pending_approval_requests.clear()
+    shell._clear_active_view()
+    assert len(shell._pending_approval_requests) == 0

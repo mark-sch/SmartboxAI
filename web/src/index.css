@@ -464,33 +464,55 @@ body {
   max-width: none;
 }
 
-.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6,
-.streamdown-content h1, .streamdown-content h2, .streamdown-content h3,
-.streamdown-content h4, .streamdown-content h5, .streamdown-content h6 {
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6,
+.streamdown-content h1,
+.streamdown-content h2,
+.streamdown-content h3,
+.streamdown-content h4,
+.streamdown-content h5,
+.streamdown-content h6 {
   margin-top: 1.5em;
   margin-bottom: 0.5em;
   font-weight: 600;
 }
 
-.prose h1, .streamdown-content h1 { font-size: 1.5em; }
-.prose h2, .streamdown-content h2 { font-size: 1.25em; }
-.prose h3, .streamdown-content h3 { font-size: 1.125em; }
+.prose h1,
+.streamdown-content h1 {
+  font-size: 1.5em;
+}
+.prose h2,
+.streamdown-content h2 {
+  font-size: 1.25em;
+}
+.prose h3,
+.streamdown-content h3 {
+  font-size: 1.125em;
+}
 
-.prose p, .streamdown-content p {
+.prose p,
+.streamdown-content p {
   margin-top: 0.75em;
   margin-bottom: 0.75em;
   line-height: 1.6;
 }
 
-.prose ul, .prose ol,
-.streamdown-content ul, .streamdown-content ol {
+.prose ul,
+.prose ol,
+.streamdown-content ul,
+.streamdown-content ol {
   margin-top: 0.75em;
   margin-bottom: 0.75em;
   padding-left: 1.5em;
 }
 
 /* Fix for streamdown list rendering - override the root class margins */
-.prose ul, .streamdown-content ul,
+.prose ul,
+.streamdown-content ul,
 [class*="[&_ul]"] ul,
 div[class*="flow-root"] ul {
   list-style-type: disc !important;
@@ -499,7 +521,8 @@ div[class*="flow-root"] ul {
   margin-bottom: 0.75em !important;
 }
 
-.prose ol, .streamdown-content ol,
+.prose ol,
+.streamdown-content ol,
 [class*="[&_ol]"] ol,
 div[class*="flow-root"] ol {
   list-style-type: decimal !important;
@@ -509,16 +532,23 @@ div[class*="flow-root"] ol {
 }
 
 /* Nested lists */
-.prose ul ul, .prose ul ol, .prose ol ul, .prose ol ol,
-.streamdown-content ul ul, .streamdown-content ul ol,
-.streamdown-content ol ul, .streamdown-content ol ol,
-div[class*="flow-root"] ul ul, div[class*="flow-root"] ol ul {
+.prose ul ul,
+.prose ul ol,
+.prose ol ul,
+.prose ol ol,
+.streamdown-content ul ul,
+.streamdown-content ul ol,
+.streamdown-content ol ul,
+.streamdown-content ol ol,
+div[class*="flow-root"] ul ul,
+div[class*="flow-root"] ol ul {
   margin-top: 0.25em !important;
   margin-bottom: 0.25em !important;
 }
 
 /* List items - override the root class margins */
-.prose li, .streamdown-content li,
+.prose li,
+.streamdown-content li,
 [class*="[&_li]"] li,
 div[class*="flow-root"] li {
   margin-top: 0.25em !important;
@@ -527,16 +557,20 @@ div[class*="flow-root"] li {
 }
 
 /* Task list items */
-.prose li.task-list-item, .streamdown-content li.task-list-item,
+.prose li.task-list-item,
+.streamdown-content li.task-list-item,
 div[class*="flow-root"] li.task-list-item {
   list-style-type: none !important;
   padding-left: 0.5em !important;
 }
 
-.prose strong, .streamdown-content strong {
+.prose strong,
+.streamdown-content strong {
   font-weight: 600;
 }
 
-.prose code, .streamdown-content code {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+.prose code,
+.streamdown-content code {
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }

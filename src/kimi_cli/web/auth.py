@@ -140,7 +140,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self._enforce_origin = enforce_origin
         self._lan_only = lan_only
 
-    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+    async def dispatch(self, request: Request, call_next):  # pyright: ignore[reportMissingParameterType]
         path = request.url.path
 
         # LAN-only check applies to all requests (including static files)

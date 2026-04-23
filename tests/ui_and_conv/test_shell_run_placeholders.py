@@ -103,15 +103,17 @@ async def test_shell_run_treats_hidden_slash_in_placeholder_as_regular_agent_inp
         ]
     )
     shell = shell_module.Shell(cast(Soul, _make_fake_soul()))
-    shell.run_soul_command = AsyncMock(return_value=True)
-    shell._run_slash_command = AsyncMock()
+    shell.run_soul_command = AsyncMock(return_value=True)  # type: ignore[assignment]
+    shell._run_slash_command = AsyncMock()  # type: ignore[assignment]
 
     result = await shell.run()
 
     assert result is True
     assert _FakePromptSession.instances[0].prompt_calls == 2
-    shell.run_soul_command.assert_awaited_once_with([TextPart(text="/quit\nstill send this")])
-    shell._run_slash_command.assert_not_awaited()
+    cast(AsyncMock, shell.run_soul_command).assert_awaited_once_with(
+        [TextPart(text="/quit\nstill send this")]
+    )
+    cast(AsyncMock, shell._run_slash_command).assert_not_awaited()
     assert printed == ["✨ [Pasted text #1 +3 lines]", "", "Bye!"]
 
 
@@ -132,17 +134,17 @@ async def test_shell_run_dispatches_visible_slash_with_expanded_placeholder_args
         ]
     )
     shell = shell_module.Shell(cast(Soul, _make_fake_soul()))
-    shell.run_soul_command = AsyncMock(return_value=True)
-    shell._run_slash_command = AsyncMock()
+    shell.run_soul_command = AsyncMock(return_value=True)  # type: ignore[assignment]
+    shell._run_slash_command = AsyncMock()  # type: ignore[assignment]
 
     result = await shell.run()
 
     assert result is True
     assert _FakePromptSession.instances[0].prompt_calls == 2
-    shell.run_soul_command.assert_not_awaited()
-    shell._run_slash_command.assert_awaited_once()
-    assert shell._run_slash_command.await_args is not None
-    command_call = shell._run_slash_command.await_args.args[0]
+    cast(AsyncMock, shell.run_soul_command).assert_not_awaited()
+    cast(AsyncMock, shell._run_slash_command).assert_awaited_once()
+    assert cast(AsyncMock, shell._run_slash_command).await_args is not None
+    command_call = cast(AsyncMock, shell._run_slash_command).await_args.args[0]  # pyright: ignore[reportOptionalMemberAccess]
     assert command_call.name == "fakecmd"
     assert command_call.args == "line1\nline2\nline3"
     assert command_call.raw_input == "/fakecmd line1\nline2\nline3"

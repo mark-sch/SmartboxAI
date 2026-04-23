@@ -18,7 +18,7 @@ HookEventType = Literal[
     "Notification",
 ]
 
-HOOK_EVENT_TYPES: list[str] = list(HookEventType.__args__)  # type: ignore[attr-defined]
+HOOK_EVENT_TYPES: list[str] = list(HookEventType.__args__)
 
 
 class HookDef(BaseModel):

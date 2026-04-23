@@ -1495,7 +1495,7 @@ class CustomPromptSession:
                 if self._try_paste_media(event):
                     return
                 clipboard_data = event.app.clipboard.get_data()
-                if clipboard_data is None:  # type: ignore[reportUnnecessaryComparison]
+                if clipboard_data is None:  # pyright: ignore[reportUnnecessaryComparison]
                     return
                 self._insert_pasted_text(event.current_buffer, clipboard_data.text)
                 event.app.invalidate()
