@@ -175,6 +175,23 @@ class MCPClientConfig(BaseModel):
     """Timeout for tool calls in milliseconds."""
 
 
+class SmartboxLLMProxyConfig(BaseModel):
+    """Default values for Smartbox LLM Proxy login prompts."""
+
+    base_url: str = Field(
+        default="",
+        description="Default proxy URL prefilled during /login for Smartbox LLM Proxy",
+    )
+    api_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="Default API key prefilled during /login for Smartbox LLM Proxy",
+    )
+
+    @field_serializer("api_key", when_used="json")
+    def dump_secret(self, v: SecretStr):
+        return v.get_secret_value()
+
+
 class MCPConfig(BaseModel):
     """MCP configuration."""
 
@@ -238,6 +255,9 @@ class Config(BaseModel):
         default_factory=NotificationConfig, description="Notification configuration"
     )
     services: Services = Field(default_factory=Services, description="Services configuration")
+    smartbox_llm_proxy: SmartboxLLMProxyConfig = Field(
+        default_factory=SmartboxLLMProxyConfig, description="Smartbox LLM Proxy defaults"
+    )
     mcp: MCPConfig = Field(default_factory=MCPConfig, description="MCP configuration")
     hooks: list[HookDef] = Field(default_factory=list, description="Hook definitions")  # pyright: ignore[reportUnknownVariableType]
     merge_all_available_skills: bool = Field(

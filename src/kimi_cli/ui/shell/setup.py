@@ -26,6 +26,7 @@ from kimi_cli.config import (
     load_config,
     save_config,
 )
+from kimi_cli.llm import ModelCapability
 from kimi_cli.ui.shell.console import console
 from kimi_cli.ui.shell.slash import registry
 
@@ -75,8 +76,11 @@ class _SetupResult(NamedTuple):
 
 async def _setup_platform(platform: Platform) -> _SetupResult | None:
     # For the proxy platform, ask for the proxy URL first
+    proxy_config_defaults = None
     if platform.id == "kimi-code-proxy":
-        proxy_url = await _prompt_text("Enter proxy URL")
+        cfg = load_config()
+        proxy_config_defaults = cfg.smartbox_llm_proxy
+        proxy_url = await _prompt_text("Enter proxy URL", default=proxy_config_defaults.base_url)
         if not proxy_url:
             return None
         platform = Platform(
@@ -86,7 +90,10 @@ async def _setup_platform(platform: Platform) -> _SetupResult | None:
         )
 
     # enter the API key
-    api_key = await _prompt_text("Enter your API key", is_password=True)
+    api_key_default = ""
+    if proxy_config_defaults and proxy_config_defaults.api_key.get_secret_value():
+        api_key_default = proxy_config_defaults.api_key.get_secret_value()
+    api_key = await _prompt_text("Enter your API key", is_password=True, default=api_key_default)
     if not api_key:
         return None
 
@@ -156,6 +163,16 @@ async def _setup_platform(platform: Platform) -> _SetupResult | None:
         if not thinking_selection:
             return None
         thinking = thinking_selection == "on"
+    elif platform.id == "kimi-code-proxy":
+        # Proxy platforms may not report capabilities — always ask the user.
+        # Default to "off" since we cannot confirm the backend supports reasoning.
+        thinking_selection = await _prompt_choice(
+            header="Enable thinking mode? (↑↓ navigate, Enter select, Ctrl+C cancel):",
+            choices=["off", "on"],
+        )
+        if not thinking_selection:
+            return None
+        thinking = thinking_selection == "on"
     else:
         thinking = False
 
@@ -185,12 +202,18 @@ def _apply_setup_result(result: _SetupResult) -> None:
         if model.provider == provider_key:
             del config.models[key]
     for model_info in result.models:
-        capabilities = model_info.capabilities or None
+        capabilities: set[ModelCapability] = (
+            set(model_info.capabilities) if model_info.capabilities else set()
+        )
+        # When the user enables thinking, ensure the selected model has the
+        # "thinking" capability even if the upstream API didn't report it.
+        if result.thinking and model_info.id == result.selected_model.id:
+            capabilities.add("thinking")  # type: ignore[arg-type]
         config.models[managed_model_key(result.platform.id, model_info.id)] = LLMModel(
             provider=provider_key,
             model=model_info.id,
             max_context_size=model_info.context_length,
-            capabilities=capabilities,
+            capabilities=capabilities or None,
         )
     config.default_model = model_key
     config.default_thinking = result.thinking
@@ -224,13 +247,14 @@ async def _prompt_choice(*, header: str, choices: list[str]) -> str | None:
         return None
 
 
-async def _prompt_text(prompt: str, *, is_password: bool = False) -> str | None:
+async def _prompt_text(prompt: str, *, is_password: bool = False, default: str = "") -> str | None:
     session = PromptSession[str]()
     try:
         return str(
             await session.prompt_async(
                 f" {prompt}: ",
                 is_password=is_password,
+                default=default,
             )
         ).strip()
     except (EOFError, KeyboardInterrupt):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from inline_snapshot import snapshot
+from pydantic import SecretStr
 
 from kimi_cli.config import (
     Config,
@@ -54,6 +55,7 @@ def test_default_config_dump():
                 "claim_stale_after_ms": 15000,
             },
             "services": {"moonshot_search": None, "moonshot_fetch": None},
+            "smartbox_llm_proxy": {"base_url": "", "api_key": SecretStr("")},
             "mcp": {"client": {"tool_call_timeout_ms": 60000}},
             "hooks": [],
             "merge_all_available_skills": True,
